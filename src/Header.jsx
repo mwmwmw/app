@@ -611,6 +611,9 @@ export default function Header({
     arControl = false;
 
     const newFaceTracking = !ioManager.getFaceTracking();
+    if (arUiContentRef.current) {
+      arUiContentRef.current.append(newFaceTracking.videoCanvas)
+    }
     ioManager.setFaceTracking(newFaceTracking);
     setFaceTrackingEnabled(newFaceTracking);
     setFaceTrackingOpen(false);
@@ -952,10 +955,10 @@ export default function Header({
               _toggleFaceTracking();
             }}>EXIT</div>
           </div> : null}
-          <div className={classnames(styles['content-placeholder'], faceTrackingEnabled && !faceTrackingOpen ? styles.visible : null)}>
+          <div className={classnames(styles['content-placeholder'], faceTrackingEnabled && !faceTrackingOpen ? styles.visible : null)} ref={arUiContentRef}>
             <h1>Standby...</h1>
           </div>
-          <div className={classnames(styles.content, faceTrackingEnabled && faceTrackingOpen ? styles.visible : null)} ref={arUiContentRef} />
+          <div className={classnames(styles.content, faceTrackingEnabled && faceTrackingOpen ? styles.visible : null)} />
         </div>
       </div>
     </div>

@@ -19,7 +19,7 @@ import {menuState} from './mithril-ui/store/state.js'; */
 import physx from './physx.js';
 // import {airFriction, flyFriction} from './constants.js';
 import transformControls from './transform-controls.js';
-import {FaceTracker} from './face-tracking.js';
+import { FaceTracker } from './face-tracking/face-tracking';
 import metaversefile from 'metaversefile';
 
 const localVector = new THREE.Vector3();
