@@ -955,10 +955,10 @@ export default function Header({
               _toggleFaceTracking();
             }}>EXIT</div>
           </div> : null}
-          <div className={classnames(styles['content-placeholder'], faceTrackingEnabled && !faceTrackingOpen ? styles.visible : null)} ref={arUiContentRef}>
+          <div className={classnames(styles['content-placeholder'], faceTrackingEnabled && !faceTrackingOpen ? styles.visible : null)} >
             <h1>Standby...</h1>
           </div>
-          <div className={classnames(styles.content, faceTrackingEnabled && faceTrackingOpen ? styles.visible : null)} />
+          <div className={classnames(styles.content, faceTrackingEnabled && faceTrackingOpen ? styles.visible : null)} ref={arUiContentRef} />
         </div>
       </div>
     </div>
