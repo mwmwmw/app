@@ -1,263 +1,203 @@
 
-import React, {useState, Component, useRef, useEffect} from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import classnames from 'classnames';
-import styles from './Header.module.css';
+
 import * as ceramicApi from '../ceramic.js';
-// import styles from './User.module.css';
-import {storageHost, accountsHost, tokensHost, loginEndpoint, discordClientId, walletHost} from '../constants';
-import {contracts, getAddressFromMnemonic} from '../blockchain.js';
-import {jsonParse, parseQuery, handleDiscordLogin} from '../util.js';
-import Modal from "./components/modal";
+import { discordClientId } from '../constants';
+import { parseQuery } from '../util.js';
+import Modal from './components/modal';
+import WebaWallet from './components/wallet';
 
-const User = ({address, setAddress, open, setOpen, toggleOpen}) => {
+import { AppContext } from './components/app';
 
-  const [show, setShow] = useState(false);
+import styles from './Header.module.css';
 
-  const showModal = async e => {
-    e.preventDefault();
-    setShow(!show);
-  } 
+//
 
-  const [loggingIn, setLoggingIn] = useState(false);
-  const [loginButtons, setLoginButtons] = useState(false);
+export const User = ({ address, setAddress, setLoginFrom }) => {
 
-  const [discordUrl, setDiscordUrl] = useState('');
-  const [loginError, setLoginError] = useState(null);
+    const { state, setState } = useContext( AppContext );
+    const [ show, setShow ] = useState(false);
+    const [ loggingIn, setLoggingIn ] = useState(false);
+    const [ loginButtons, setLoginButtons ] = useState(false);
+    const [ loginError, setLoginError ] = useState(null);
+    const [ autoLoginRequestMade, setAutoLoginRequestMade ] = useState(false);
 
-  var iframe = null;
-  var walletMessenger = null;
+    //
 
-  // popup code for getting user's password
+    const showModal = ( event ) => {
 
-  // var popUp = null;
-  // const openPopup = async (mnemonic) => {
-  //   popUp = window.open(walletHost, '', "height=800,width=600");
+        event.preventDefault();
+        setShow( ! show );
 
-  //   var f = function(event){
-  //     if (event.origin !== walletHost)
-  //       return;
-    
-  //     if(event.data == 'received') {
-  //       sendMessage(mnemonic);
-  //       window.removeEventListener("message", f, false);
-  //     }      
-  //   }
-  //   window.addEventListener("message", f);
+    };
 
-  // }
+    const metaMaskLogin = async ( event ) => {
 
-  // const sendMessage = async (mnemonic) => {
+        event.preventDefault();
+        event.stopPropagation();
 
-  //   popUp.postMessage(JSON.stringify({'p_mnemonic': mnemonic}), walletHost);
+        if ( address ) {
 
-  //   var f = function(event){
-  //     if (event.origin !== walletHost)
-  //     return;
-  
-  //     if(event.data.mnemonic && event.data.Success) {
-  //       sessionStorage.setItem("mnemonic", event.data.mnemonic);
-  //       window.removeEventListener("message", f, false);
-  //       popUp.close();
-  //     }   
-  //   }
-  //   window.addEventListener("message", f);
-  // }
+            setState({ openedPanel: ( state.openedPanel === 'UserPanel' ? null : 'UserPanel' ) });
 
-  const fetchWalletData = async (key) => {
-    iframe = window.open(walletHost, 'wallet')
+        } else {
 
-    var f = function(event){
-      if (`${event.origin}/weba-wallet` !== walletHost)
-      return;
+            if ( ! loggingIn ) {
 
-      if(event.data == 'received') {
-        getKeys(key);
-        window.removeEventListener("message", f, false);
-      } 
-    }
-    window.addEventListener("message", f);
-  }
+                setLoggingIn( true );
 
-  const getKeys = async (key) => {
-    if(key) {
-      iframe.postMessage(JSON.stringify({action: 'getKey', key: key}), walletHost);
-    }
-    else {
-      iframe.postMessage(JSON.stringify({action: 'getAllKeys'}), walletHost);
-    }
+                try {
 
-    var f = function(event){
+                    const { address, profile } = await ceramicApi.login();
+                    setAddress(address);
+                    setLoginFrom('metamask');
+                    setShow(false);
+                    setLoginFrom('metamask');
 
-      if (`${event.origin}/weba-wallet` !== walletHost)
-      return;
-  
-      if(event.data.privateKey) {
-        const address = getAddressFromMnemonic(event.data.privateKey);
-        if(address) {
-          setAddress(address);
-        }
-        window.removeEventListener("message", f, false);
-        iframe.close();
-      }
-      else {
-        window.removeEventListener("message", f, false);
-        iframe.close();
-      }
-    }
-    window.addEventListener("message", f);
-  }
+                } catch (err) {
 
-  // function for sending data to wallet
-  const sendDataToWallet = async (key, value) => {
+                    console.warn(err);
 
-    walletMessenger = window.open(walletHost, 'walletMessenger')
+                } finally {
 
-    var f = function(event){
-      if (`${event.origin}/weba-wallet` !== walletHost)
-        return;
+                    setLoggingIn(false);
 
-      if(event.data == 'received') {
-        sendData(key, value);
-        window.removeEventListener("message", f, false);
-      }
-    }
-    window.addEventListener("message", f);
-  }
+                }
 
-  const sendData = async (key, value) => {
-    var message = JSON.stringify({'action': 'storeKey', 'key': key, 'value': value});
-    walletMessenger.postMessage(message, walletHost);
-
-    var f = function(event){
-      if (`${event.origin}/weba-wallet` !== walletHost)
-        return;
-
-      window.removeEventListener("message", f, false);
-      walletMessenger.close();
-      }
-      window.addEventListener("message", f);
-  }
-
-  const metaMaskLogin = async e => {
-    e.preventDefault();
-    e.stopPropagation(); 
-    if (address) {
-      toggleOpen('user');
-    } else {
-      if (!loggingIn) {
-        setLoggingIn(true);
-        try {
-
-          const {address, profile} = await ceramicApi.login();
-          setAddress(address);
-          setShow(false);
-
-        } catch (err) {
-          console.warn(err);
-        } finally {
-          setLoggingIn(false);
-        }
-      }
-    }
-  }
-
-  const discordLogin = async e => {
-    e.preventDefault();
-    e.stopPropagation();
-    setLoginButtons(false);
-  } 
-  
-  useEffect(async () => {
-
-      const {
-        error,
-        error_description,
-        code,
-        id,
-        play,
-        realmId,
-        twitter: arrivingFromTwitter,
-      } = typeof window !== 'undefined' ? parseQuery(window.location.search) : {};
-      if(code) {
-        const {address, error, mnemonic} = await handleDiscordLogin(code, id);
-        if(address) {
-          setAddress(address);
-          sendDataToWallet('privateKey', mnemonic)
-          setShow(false);
-        }
-        else {
-          setLoginError(String(error).toLocaleUpperCase());
-        }
-      }
-      else {
-        fetchWalletData('privateKey');
-      }
-  }, [address, setAddress]);
-
-
-  return (
-    <div>
-       <iframe name="wallet" width="0" height="0"></iframe>
-       <iframe name="walletMessenger" width="0" height="0"></iframe>
-      <div className={classnames(styles.user, loggingIn ? styles.loggingIn : null)}
-        onClick={async e => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (address) {
-            toggleOpen('user');
-          }else{
-            setLoginButtons(true);
-            setOpen(null);
-            setOpen('login');
-          }
-        }}>
-        <img src="images/soul.png" className={styles.icon} />
-        <div className={styles.name} onClick={e => { showModal(e); }}>
-          {loggingIn ? 'Logging in... ' : (address || (loginError || 'Log in'))}  
-
-        </div>
-      </div>
-      { address ?
-        <div className={styles.logoutBtn}
-        onClick={e => {
-         sessionStorage.removeItem('mnemonic');
-         setAddress(null)
-        }}
-        >Logout</div>
-       : ''
-      }
-      {
-        open == 'login'
-          ? <div className={styles.login_options}>
-            {
-              loginButtons ? <>
-                <Modal onClose={ showModal } show={show}>
-                  <div className={styles.loginDiv}>
-                    <div className={styles.loginBtn} onClick={ metaMaskLogin }>
-                      <div className={styles.loginBtnText}>
-                      <img className={styles.loginBtnImg} src="images/metamask.png" alt="metamask" width="28px"/>
-                      <span>MetaMask</span>
-                      </div>
-                     </div>
-                    <a href={`https://discord.com/api/oauth2/authorize?client_id=${discordClientId}&redirect_uri=${window.location.origin}%2Flogin&response_type=code&scope=identify`}>
-                      <div className={styles.loginBtn} style={{marginTop: '10px'}}>
-                      <div className={styles.loginBtnText}>
-                      <img className={styles.loginBtnImg} src="images/discord-dark.png" alt="discord" width="28px"/>
-                      <span>Discord</span>
-                      </div>
-                      </div>
-                    </a>
-                  </div>
-                </Modal>
-                </> : ''
             }
-          </div>
-          : <div></div>}
 
-    </div>
-  );
+        }
+
+    };
+
+    useEffect( () => {
+
+        const { error, code, id, play, realmId, twitter: arrivingFromTwitter } = parseQuery( window.location.search );
+
+        if ( ! autoLoginRequestMade ) {
+
+            setAutoLoginRequestMade( true );
+
+            if ( code ) {
+
+                setLoggingIn( true );
+
+                WebaWallet.waitForLaunch().then( async () => {
+
+                    const { address, error } = await WebaWallet.loginDiscord( code, id );
+
+                    if ( address ) {
+
+                        setAddress( address );
+                        setLoginFrom( 'discord' );
+                        setShow( false );
+
+                    } else if ( error ) {
+
+                        setLoginError( String( error ).toLocaleUpperCase() );
+
+                    }
+
+                    window.history.pushState( {}, '', window.location.origin );
+                    setLoggingIn( false );
+
+                }); // it may occur that wallet loading is in progress already
+
+            } else {
+
+                WebaWallet.waitForLaunch().then( async () => {
+
+                    const { address, error } = await WebaWallet.autoLogin();
+
+                    if ( address ) {
+
+                        setAddress( address );
+                        setLoginFrom( 'discord' );
+                        setShow( false );
+
+                    } else if ( error ) {
+
+                        setLoginError( String( error ).toLocaleUpperCase() );
+
+                    }
+
+                }); // it may occur that wallet loading is in progress already
+
+            }
+
+        }
+
+    }, [ address, setAddress ] );
+
+    //
+
+    return (
+        <div>
+            <div
+                className={ classnames( styles.user, loggingIn ? styles.loggingIn : null ) }
+                onClick={async e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if ( address ) {
+
+                        setState({ openedPanel: ( state.openedPanel === 'UserPanel' ? null : 'UserPanel' ) });
+
+                    } else {
+
+                        setLoginButtons( true );
+                        setState({ openedPanel: 'LoginPanel' });
+
+                    }
+                }}
+            >
+                <img src="images/soul.png" className={styles.icon} />
+                <div className={styles.name} onClick={e => { showModal(e); }}>
+                    {loggingIn ? 'Logging in... ' : (address || (loginError || 'Log in'))}
+                </div>
+            </div>
+
+            { address ? (
+                <div className={styles.logoutBtn}
+                    onClick={e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        WebaWallet.logout();
+                        setAddress(null);
+                    }}
+                >Logout</div> ) : ''
+            }
+
+            {
+                state.openedPanel === 'LoginPanel' ? (
+                    <div className={styles.login_options}>
+                        {
+                            loginButtons ? <>
+                                <Modal onClose={ showModal } show={show}>
+                                    <div className={styles.loginDiv}>
+                                        <div className={styles.loginBtn} onClick={ metaMaskLogin }>
+                                            <div className={styles.loginBtnText}>
+                                                <img className={styles.loginBtnImg} src="images/metamask.png" alt="metamask" width="28px"/>
+                                                <span>MetaMask</span>
+                                            </div>
+                                        </div>
+                                        <a href={`https://discord.com/api/oauth2/authorize?client_id=${discordClientId}&redirect_uri=${window.location.origin}%2Flogin&response_type=code&scope=identify`}>
+                                            <div className={styles.loginBtn} style={{marginTop: '10px'}}>
+                                                <div className={styles.loginBtnText}>
+                                                    <img className={styles.loginBtnImg} src="images/discord-dark.png" alt="discord" width="28px"/>
+                                                    <span>Discord</span>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+                                </Modal>
+                            </> : ''
+                        }
+                    </div>
+                ) : <div/>
+            }
+        </div>
+    );
+
 };
-
-
-
-export default User;

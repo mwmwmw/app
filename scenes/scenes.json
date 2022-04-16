@@ -3,9 +3,13 @@
   "treehouse.scn",
   "shadows.scn",
   "darkness.scn",
+  "grass.scn",
+  "battalion.scn",
   "gunroom.scn",
   "classroom.scn",
-  "grid.scn",
+  "block.scn",
   "canyon.scn",
-  "prototype.scn"
+  "prototype.scn",
+  "silk-fountains.scn",
+  "moon.scn"
 ]

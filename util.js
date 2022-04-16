@@ -2,17 +2,17 @@ import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 // import atlaspack from './atlaspack.js';
 import { getAddressFromMnemonic } from './blockchain.js';
-import {playersMapName, maxGrabDistance, tokensHost, storageHost, accountsHost, loginEndpoint} from './constants.js';
+import {playersMapName, tokensHost, storageHost, accountsHost, loginEndpoint, audioTimeoutTime} from './constants.js';
 
 const localVector = new THREE.Vector3();
 const localVector2 = new THREE.Vector3();
 const localVector3 = new THREE.Vector3();
 const localVector4 = new THREE.Vector3();
 const localVector5 = new THREE.Vector3();
-const localVector6 = new THREE.Vector3();
-const localQuaternion = new THREE.Quaternion();
-const localQuaternion2 = new THREE.Quaternion();
-const localQuaternion3 = new THREE.Quaternion();
+// const localVector6 = new THREE.Vector3();
+// const localQuaternion = new THREE.Quaternion();
+// const localQuaternion2 = new THREE.Quaternion();
+// const localQuaternion3 = new THREE.Quaternion();
 const localMatrix = new THREE.Matrix4();
 const localMatrix2 = new THREE.Matrix4();
 
@@ -71,31 +71,6 @@ export function readFile(file) {
     fr.onerror = reject;
     fr.readAsArrayBuffer(file);
   });
-}
-export function bindUploadFileButton(inputFileEl, handleUpload) {
-  function change(e) {
-    inputFileEl.removeEventListener('change', change);
-    
-    const {files} = e.target;
-    if (inputFileEl.multiple) {
-      handleUpload(Array.from(files));
-    } else {
-      const [file = null] = files;
-      handleUpload(file);
-    }
-
-    const {parentNode} = inputFileEl;
-    parentNode.removeChild(inputFileEl);
-    const newInputFileEl = inputFileEl.ownerDocument.createElement('input');
-    newInputFileEl.type = 'file';
-    newInputFileEl.id = inputFileEl.id;
-    // newInputFileEl.id = 'upload-file-button';
-    // newInputFileEl.style.display = 'none';
-    newInputFileEl.classList.add('hidden');
-    parentNode.appendChild(newInputFileEl);
-    bindUploadFileButton(newInputFileEl, handleUpload);
-  }
-  inputFileEl.addEventListener('change', change);
 }
 
 export function snapPosition(o, positionSnap) {
@@ -543,6 +518,13 @@ export const unFrustumCull = o => {
   o.traverse(o => {
     if (o.isMesh) {
       o.frustumCulled = false;
+    }
+  });
+};
+
+export const enableShadows = o => {
+  o.traverse(o => {
+    if (o.isMesh) {
       o.castShadow = true;
       o.receiveShadow = true;
     }
@@ -608,7 +590,7 @@ export function makeId(length) {
   return result;
 }
 
-async function contentIdToStorageUrl(id) {
+/* async function contentIdToStorageUrl(id) {
   if (typeof id === 'number') {
     const hash = await contracts.mainnetsidechain.NFT.methods.getHash(id + '').call();
     return `${storageHost}/${hash}`;
@@ -617,7 +599,7 @@ async function contentIdToStorageUrl(id) {
   } else {
     return null;
   }
-}
+} */
 
 async function pullUserObject(loginToken) {
   const address = getAddressFromMnemonic(loginToken.mnemonic);
@@ -665,7 +647,7 @@ export function getPlayerPrefix(playerId) {
   return playersMapName + '.' + playerId;
 }
 
-export function fitCameraToBox(camera, boundingBox, fitOffset = 1) {
+/* export function fitCameraToBox(camera, boundingBox, fitOffset = 1) {
   const center = boundingBox.getCenter(localVector);
   const size = boundingBox.getSize(localVector2);
 
@@ -677,8 +659,31 @@ export function fitCameraToBox(camera, boundingBox, fitOffset = 1) {
   camera.position.z = distance;
   // camera.lookAt(center);
   camera.updateMatrixWorld();
-}
+} */
 
+export function fitCameraToBoundingBox(camera, box, fitOffset = 1) {
+  const size = box.getSize(localVector);
+  const center = box.getCenter(localVector2);
+  
+  const maxSize = Math.max( size.x, size.y, size.z );
+  const fitHeightDistance = maxSize / ( 2 * Math.atan( Math.PI * camera.fov / 360 ) );
+  const fitWidthDistance = fitHeightDistance / camera.aspect;
+  const distance = fitOffset * Math.max(fitHeightDistance, fitWidthDistance);
+  
+  const direction = center.clone()
+    .sub(camera.position)
+    .normalize()
+    .multiplyScalar(distance);
+
+  camera.position.copy(center).add(direction);
+  camera.quaternion.setFromRotationMatrix(
+    localMatrix.lookAt(
+      camera.position,
+      center,
+      camera.up,
+    )
+  );
+}
 
 export function applyVelocity(position, velocity, timeDiffS) {
   position.add(localVector.copy(velocity).multiplyScalar(timeDiffS));
@@ -689,3 +694,418 @@ export function copyPQS(dst, src) {
   dst.quaternion.copy(src.quaternion);
   dst.scale.copy(src.scale);
 }
+
+export async function loadJson(u) {
+  const res = await fetch(u);
+  return await res.json();
+}
+export async function loadAudio(u) {
+  const audio = new Audio();
+  const p = new Promise((accept, reject) => {
+    const timeout = setTimeout(() => {
+      console.warn('audio load seems hung', audio);
+    }, audioTimeoutTime);
+    const _cleanup = () => {
+      clearTimeout(timeout);
+    };
+    audio.oncanplay = () => {
+      _cleanup();
+      accept();
+    };
+    audio.onerror = err => {
+      _cleanup();
+      reject(err);
+    };
+  });
+  // console.log('got src', `../sounds/${soundType}/${fileName}`);
+  audio.crossOrigin = 'Anonymous';
+  audio.src = u;
+  audio.load();
+  await p;
+  // document.body.appendChild(audio);
+  return audio;
+}
+export async function loadAudioBuffer(audioContext, url) {
+  const res = await fetch(url);
+  const arrayBuffer = await res.arrayBuffer();
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  return audioBuffer;
+}
+export const memoize = fn => {
+  let loaded = false;
+  let cache = null;
+  return () => {
+    if (!loaded) {
+      cache = fn();
+      loaded = true;
+    }
+    return cache;
+  };
+};
+export function shuffle(array, rng = Math.random) {
+  let currentIndex = array.length,  randomIndex;
+
+  // While there remain elements to shuffle...
+  while (currentIndex != 0) {
+
+    // Pick a remaining element...
+    randomIndex = Math.floor(rng() * currentIndex);
+    currentIndex--;
+
+    // And swap it with the current element.
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+
+  return array;
+}
+export const waitForFrame = () => new Promise(accept => {
+  requestAnimationFrame(() => {
+    accept();
+  });
+});
+
+const doUpload = async (
+  u,
+  f,
+  {
+    onProgress = null,
+  } = {}
+) => {
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', u, true);
+  // xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.responseType = 'json';
+  xhr.upload.onprogress = e => {
+    // const {lengthComputable, loaded, total} = e;
+    // console.log();
+    onProgress && onProgress(e);
+  };
+  const j = await new Promise((accept, reject) => {
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        accept(xhr.response);
+      } else {
+        const err = new Error('invalid status code: ' + xhr.status);
+        reject(err);
+      }
+    };
+    xhr.onerror = reject;
+    xhr.send(f);
+  });
+  return j;
+  /* const res = await fetch(u, {
+    method: 'POST',
+    body: f,
+  });
+  const hashes = await res.json();
+  return hashes; */
+}
+export const proxifyUrl = u => {
+  const match = u.match(/^([a-z0-9]+):\/\/([a-z0-9\-\.]+)(.+)$/i);
+  if (match) {
+    return 'https://' + match[1] + '-' + match[2].replace(/\-/g, '--').replace(/\./g, '-') + '.proxy.webaverse.com' + match[3];
+  } else {
+    return u;
+  }
+};
+export const getDropUrl = o => {
+  let u = null;
+  if (typeof o?.start_url === 'string') {
+    u = o.start_url;
+  /* } else if (typeof j?.asset_contract?.address === 'string') {
+    const {token_id, asset_contract} = j;
+    const {address} = asset_contract;
+    
+    if (contractNames[address]) {
+      u = `/@proxy/` + encodeURI(`eth://${address}/${token_id}`);
+    } else {
+      console.log('got j', j);
+      const {traits} = j;
+      // cryptovoxels wearables
+      const voxTrait = traits.find(t => t.trait_type === 'vox'); // XXX move to a loader
+      if (voxTrait) {
+        const {value} = voxTrait;
+        u = proxifyUrl(value) + '?type=vox';
+      } else {
+        const {token_metadata} = j;
+        // console.log('proxify', token_metadata);
+        const res = await fetch(proxifyUrl(token_metadata), {
+          mode: 'cors',
+        });
+        const j2 = await res.json();
+        // console.log('got metadata', j2);
+        
+        // dcl wearables
+        if (j2.id?.startsWith('urn:decentraland:')) {
+          // 'urn:decentraland:ethereum:collections-v1:mch_collection:mch_enemy_upper_body'
+          const res = await fetch(`https://peer-lb.decentraland.org/lambdas/collections/wearables?wearableId=${j2.id}`, { // XXX move to a loader
+            mode: 'cors',
+          });
+          const j3 = await res.json();
+          const {wearables} = j3;
+          const wearable = wearables[0];
+          const representation = wearable.data.representations[0];
+          const {mainFile, contents} = representation;
+          const file = contents.find(f => f.key === mainFile);
+          const match = mainFile.match(/\.([a-z0-9]+)$/i);
+          const type = match && match[1];
+          // console.log('got wearable', {mainFile, contents, file, type});
+          u = '/@proxy/' + encodeURI(file.url) + (type ? ('?type=' + type) : '');
+        } else {
+          // avatar
+          const {avatar_url, asset} = j2;
+          const avatarUrl = avatar_url || asset;
+          if (avatarUrl) {
+            u = '/@proxy/' + encodeURI(avatarUrl) + '?type=vrm';
+          } else {
+            // default
+            const {image} = j2;
+            u = '/@proxy/' + encodeURI(image);
+          }
+        }
+      }
+    } */
+  }
+  return u;
+};
+export const handleDropJsonItem = async item => {
+  if (item?.kind === 'string') {
+    const s = await new Promise((accept, reject) => {
+      item.getAsString(accept);
+    });
+    const j = jsonParse(s);
+    if (j) {
+      const u = getDropUrl(j);
+      return u;
+    } /* else {
+      console.warn('not uploading unknown json object', j);
+      // return null;
+    } */
+  }
+  return null;
+};
+export const handleUpload = async (
+  item,
+  {
+    onProgress = null,
+  } = {}
+) => {
+  console.log('uploading...', item);
+  
+  const _handleFileList = async item => {
+    const formData = new FormData();
+
+    formData.append(
+      '',
+      new Blob([], {
+        type: 'application/x-directory',
+      }),
+      ''
+    );
+
+    const files = item;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      formData.append(file.name, file, file.name);
+    }
+
+    const hashes = await doUpload(`https://ipfs.webaverse.com/`, formData, {
+      onProgress,
+    });
+
+    const rootDirectory = hashes.find(h => h.name === '');
+    const rootDirectoryHash = rootDirectory.hash;
+    return `https://ipfs.webaverse.com/ipfs/${rootDirectoryHash}/`;
+  };
+  const _handleString = item => handleDropJsonItem(item);
+  const _handleDirectory = async entry => {
+    const formData = new FormData();
+        
+    const rootEntry = entry;
+    const _recurse = async entry => {
+      function getFullPath(entry) {
+        return entry.fullPath.slice(rootEntry.fullPath.length);
+      }
+      const fullPath = getFullPath(entry);
+      // console.log('directory full path', entry.fullPath, rootEntry.fullPath, fullPath);
+      formData.append(
+        fullPath,
+        new Blob([], {
+          type: 'application/x-directory',
+        }),
+        fullPath
+      );
+      
+      const reader = entry.createReader();
+      async function readEntries() {
+        const entries = await new Promise((accept, reject) => {
+          reader.readEntries(entries => {
+            if (entries.length > 0) {
+              accept(entries);
+            } else {
+              accept(null);
+            }
+          }, reject);
+        });
+        return entries;
+      }
+      let entriesArray;
+      while (entriesArray = await readEntries()) {
+        for (const entry of entriesArray) {
+          if (entry.isFile) {
+            const file = await new Promise((accept, reject) => {
+              entry.file(accept, reject);
+            });
+            const fullPath = getFullPath(entry);
+
+            formData.append(fullPath, file, fullPath);
+          } else if (entry.isDirectory) {
+            await _recurse(entry);
+          }
+        }
+      } 
+    };
+    await _recurse(rootEntry);
+
+    const hashes = await doUpload(`https://ipfs.webaverse.com/`, formData, {
+      onProgress,
+    });
+
+    const rootDirectory = hashes.find(h => h.name === '');
+    const rootDirectoryHash = rootDirectory.hash;
+    return `https://ipfs.webaverse.com/ipfs/${rootDirectoryHash}/`;
+  };
+  const _handleFile = async file => {
+    const j = await doUpload(`https://ipfs.webaverse.com/`, file, {
+      onProgress,
+    });
+    const {hash} = j;
+    const {name} = file;
+
+    return `${storageHost}/${hash}/${name}`;
+  };
+  const _uploadObject = async item => {
+    let u = null;
+    
+    if (item instanceof FileList) {
+      u = _handleFileList(item);
+    } else {
+      if (item.kind === 'string') {
+        u = await _handleString(item);
+      } else {
+        const entry = item.webkitGetAsEntry();
+        if (entry.isDirectory) {
+          u = await _handleDirectory(entry);
+        } else {
+          const file = item.getAsFile();
+          u = await _handleFile(file);
+        }
+      }
+    }
+    return u;
+  };
+  const u = await _uploadObject(item);
+  console.log('upload complete:', u);
+  return u;
+};
+
+export const loadImage = u => new Promise((resolve, reject) => {
+  const img = new Image();
+  img.onload = () => {
+    resolve(img);
+  };
+  img.onerror = reject;
+  img.crossOrigin = 'Anonymous';
+  img.src = u;
+});
+
+export const isTransferable = o => {
+  const ctor = o?.constructor;
+  return ctor === MessagePort ||
+    ctor === ImageBitmap ||
+    ctor === ImageData ||
+    // ctor === AudioData ||
+    // ctor === OffscreenCanvas ||
+    ctor === ArrayBuffer ||
+    ctor === Uint8Array ||
+    ctor === Int8Array ||
+    ctor === Uint16Array ||
+    ctor === Int16Array ||
+    ctor === Uint32Array ||
+    ctor === Int32Array ||
+    ctor === Float32Array ||
+    ctor === Float64Array;
+};
+export const getTransferables = o => {
+  const result = [];
+  const _recurse = o => {
+    if (Array.isArray(o)) {
+      for (const e of o) {
+        _recurse(e);
+      }
+    } else if (o && typeof o === 'object') {
+      if (isTransferable(o)) {
+        result.push(o);
+      } else {
+        for (const k in o) {
+          _recurse(o[k]);
+        }
+      }
+    }
+  };
+  _recurse(o);
+  return result;
+};
+export const splitLinesToWidth = (() => {
+  let tempCanvas = null;
+  const _getTempCanvas = () => {
+    if (tempCanvas === null) {
+      tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 0;
+      tempCanvas.height = 0;
+    }
+    return tempCanvas;
+  };
+  
+  return (text, font, maxWidth) => {
+    const canvas = _getTempCanvas();
+    const ctx = canvas.getContext('2d');
+    ctx.font = font;
+
+    let lines = [];
+    const words = text.split(' ');
+
+    // We'll be constantly removing words from our words array to build our lines. Once we're out of words, we can stop
+    while (words.length > 0) {
+      let tmp = words[0]; // Capture the current word, in case we need to re-add it to array
+      let line = words.shift(); // Start our line with the first word available to us
+
+      // Now we'll continue adding words to our line until we've exceeded our budget
+      while (words.length && ctx.measureText(line).width < maxWidth) {
+        tmp = words[0];
+        line += ' ' + words.shift();
+      }
+
+      // If the line is too long, remove the last word and replace it in words array.
+      // This will happen on all but the last line, as we anticipate exceeding the length to break out of our second while loop
+      if (ctx.measureText(line).width > maxWidth) {
+        const lastSpaceIndex = line.lastIndexOf(' ');
+        if (lastSpaceIndex !== -1) {
+          line = line.substring(0, lastSpaceIndex);
+          words.unshift(tmp);
+        } else {
+          const part1 = line.substring(0, 12) + '-';
+          const part2 = line.substring(12);
+          line = part1;
+          words.push(part2);
+        }
+      }
+
+      // Push the finshed line into the array
+      lines.push(line);
+    }
+
+    return lines;
+  };
+})();
