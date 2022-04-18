@@ -20,7 +20,7 @@ import FaceTrackingWorker from './worker.js';
 
 const fakeAvatar = _makeFakeAvatar();
 
-class FaceTracker extends EventTarget {
+export default class FaceTracker extends EventTarget {
   constructor() {
     super();
 
@@ -100,25 +100,22 @@ class FaceTracker extends EventTarget {
       // overlayCanvas.style.backgroundColor = '#FF000020';
       // document.body.appendChild(overlayCanvas);
     } */
-    {
-      this.previewScene = new THREE.Scene();
-      this.previewScene.autoUpdate = false;
 
-      const ambientLight = new THREE.AmbientLight(0xFFFFFF, 1);
-      this.previewScene.add(ambientLight);
-      const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 1);
-      directionalLight.position.set(1, 2, 3);
-      this.previewScene.add(directionalLight);
-    }
+    this.previewScene = new THREE.Scene();
+    this.previewScene.autoUpdate = false;
 
-    {
-      this.previewCamera = new THREE.PerspectiveCamera(
-        60,
-        this.domElement.width / this.domElement.height,
-        0.1,
-        1000,
-      );
-    }
+    const ambientLight = new THREE.AmbientLight(0xFFFFFF, 1);
+    this.previewScene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 1);
+    directionalLight.position.set(1, 2, 3);
+    this.previewScene.add(directionalLight);
+
+    this.previewCamera = new THREE.PerspectiveCamera(
+      60,
+      this.domElement.width / this.domElement.height,
+      0.1,
+      1000,
+    );
 
     const _recurseFrame = async () => {
       const imageBitmap = await this.videoCapture.pullFrame();
@@ -372,7 +369,3 @@ class FaceTracker extends EventTarget {
     this.live = false;
   }
 }
-
-export {
-  FaceTracker,
-};
