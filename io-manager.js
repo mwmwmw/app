@@ -907,3 +907,38 @@ ioManager.bindInput = () => {
 };
 
 export default ioManager;
+import metaversefileApi from './metaversefile-api.js';
+import FaceTracker from './face-tracking/face-tracking';
+
+let faceTracker = null;
+
+ioManager.getFaceTracker = () => faceTracker;
+ioManager.getFaceTracking = () => !!faceTracker;
+
+const _syncAvatar = async app => {
+  const avatarClone = await app.clone();
+  console.log('face tracker set avatar', avatarClone);
+  await faceTracker.setAvatar(avatarClone);
+};
+const localPlayer = metaversefileApi.useLocalPlayer();
+ioManager.setFaceTracking = enable => {
+  console.log('set face tracking', enable, !!faceTracker);
+  if (enable && !faceTracker) {
+    faceTracker = new FaceTracker();
+
+    if (localPlayer.avatar) {
+      _syncAvatar(localPlayer.avatar.app);
+    }
+  } else if (!enable && !!faceTracker) {
+    faceTracker.destroy();
+    faceTracker = null;
+  }
+};
+// console.log('listen for avatar change');
+localPlayer.addEventListener('avatarupdate', e => {
+  console.log('got avatar change', e.app, !!faceTracker);
+  if (faceTracker) {
+    _syncAvatar(e.app);
+  }
+});
+
