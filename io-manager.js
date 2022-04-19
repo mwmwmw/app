@@ -916,9 +916,7 @@ ioManager.getFaceTracker = () => faceTracker;
 ioManager.getFaceTracking = () => !!faceTracker;
 
 const _syncAvatar = async app => {
-  const avatarClone = await app.clone();
-  console.log('face tracker set avatar', avatarClone);
-  await faceTracker.setAvatar(avatarClone);
+  await faceTracker.setAvatar(app);
 };
 const localPlayer = metaversefileApi.useLocalPlayer();
 ioManager.setFaceTracking = enable => {
