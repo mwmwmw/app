@@ -2,7 +2,10 @@ import * as THREE from 'three';
 // import metaversefile from "metaversefile";
 import * as Kalidokit from 'kalidokit';
 
-import {makeAvatar, switchAvatar} from '../player-avatar-binding.js';
+import {
+  makeAvatar,
+  switchAvatar,
+} from '../player-avatar-binding.js';
 import {domDimensions, internalDimensions, trackingPoints as points} from './constants.js';
 import {
   clamp,
@@ -30,6 +33,7 @@ export default class FaceTracker extends EventTarget {
     this.avatar = null;
     this.previewRenderer = null;
     this.previewScene = null;
+    this.oldParent = null;
     this.previewCamera = null;
     this.faceTrackingWorker = new FaceTrackingWorker();
     this.videoCapture = new VideoCapture();
@@ -52,28 +56,18 @@ export default class FaceTracker extends EventTarget {
       this.dispatchEvent(new MessageEvent('open'));
     })();
 
-    {
-      const canvas = document.createElement('canvas');
-      canvas.width = internalDimensions.width;
-      canvas.height = internalDimensions.height;
-      canvas.style.width = domDimensions.width + 'px';
-      canvas.style.height = domDimensions.height + 'px';
-      /* canvas.style.cssText = `\
-        position: absolute;
-        bottom: 0;
-        width: ${displayWidth}px;
-        height: ${displayWidth}px;
-        z-index: 100;
-        transform: rotateY(180deg);
-      `; */
-      // window.canvas2 = canvas;
-      this.domElement = canvas;
-    }
+    const canvas = document.createElement('canvas');
+    canvas.width = internalDimensions.width;
+    canvas.height = internalDimensions.height;
+    canvas.style.width = domDimensions.width + 'px';
+    canvas.style.height = domDimensions.height + 'px';
+    this.domElement = canvas;
+
     this.previewRenderer = new THREE.WebGLRenderer({
       canvas: this.domElement,
       // context,
       antialias: true,
-      alpha: true,
+      alpha: false,
     });
     /* {
       videoEl = document.createElement('video');
@@ -102,6 +96,7 @@ export default class FaceTracker extends EventTarget {
     } */
 
     this.previewScene = new THREE.Scene();
+    this.previewScene.name = 'Pip';
     this.previewScene.autoUpdate = false;
 
     const ambientLight = new THREE.AmbientLight(0xFFFFFF, 1);
@@ -109,6 +104,13 @@ export default class FaceTracker extends EventTarget {
     const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 1);
     directionalLight.position.set(1, 2, 3);
     this.previewScene.add(directionalLight);
+
+    // const geo = new THREE.BoxBufferGeometry(1, 1, 1);
+    // const mat = new THREE.MeshBasicMaterial();
+
+    // const mesh = new THREE.Mesh(geo, mat);
+
+    // this.previewScene.add(mesh);
 
     this.previewCamera = new THREE.PerspectiveCamera(
       60,
@@ -123,7 +125,7 @@ export default class FaceTracker extends EventTarget {
       const results = await this.faceTrackingWorker.processFrame(imageBitmap);
       if (!this.live) return;
       this.onResults(results);
-
+      this.update();
       _recurseFrame();
     };
     _recurseFrame();
@@ -131,56 +133,70 @@ export default class FaceTracker extends EventTarget {
 
   async setAvatar(avatarApp) {
     // const oldAvatar = this.avatar;
+
     if (this.avatar) {
       this.previewScene.remove(this.avatar.model);
-      this.avatar = null;
+      // this.avatar = null;
     }
 
-    const newAvatar = await switchAvatar(null, avatarApp);
+    // const newAvatar = await switchAvatar(null, avatarApp);
     // console.log('switch avatar', oldAvatar, newAvatar, new Error().stack);
-    this.avatar = newAvatar;
+    this.avatar = avatarApp;
     // avatar.inputs.hmd.position.y = avatar.height;
 
     const idleAvatar = _makeFakeAvatar();
-    _copyAvatarBonePositions(idleAvatar, newAvatar.modelBones);
-    _setAvatarToIdlePose(idleAvatar);
+    // _copyAvatarBonePositions(idleAvatar, avatarApp.modelBones);
+    // _setAvatarToIdlePose(idleAvatar);
     this.idleAvatar = idleAvatar;
 
     // this.avatar.setTopEnabled(true);
     // this.avatar.setHandEnabled(0, false);
     // this.avatar.setHandEnabled(1, false);
     // this.avatar.setBottomEnabled(false);
-    this.avatar.inputs.hmd.position.y = this.avatar.height;
-    this.avatar.inputs.hmd.updateMatrixWorld();
-    this.avatar.inputs.hmd.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
-    for (let i = 0; i < 2; i++) {
-      this.avatar.setHandEnabled(i, false);
-    }
+    // this.avatar.inputs.hmd.position.y = this.avatar.height;
+    // this.avatar.inputs.hmd.updateMatrixWorld();
+    // this.avatar.inputs.hmd.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+    // for (let i = 0; i < 2; i++) {
+    //   this.avatar.setHandEnabled(i, false);
+    // }
     // avatar.update(1000);
 
-    this.previewScene.add(this.avatar.model);
+    //
+
+    console.log(this.avatar.parent.name);
+    this.avatar.add(this.previewCamera);
 
     {
-      const distance = -1;
+      const distance = 1;
       // const h = avatar.height * 0.85;
-      const h = this.avatar.height * 0.9;
-      this.previewCamera.position.set(0, h, -distance);
+      const h = this.avatar.avatar.height * 0.9;
+      this.previewCamera.position.copy(this.avatar.position);
+      this.previewCamera.position.y += h;
+      this.previewCamera.position.z += distance;
+      // this.previewCamera.setRotationFromQuaternion(this.avatar.rotation);
       // this.previewCamera.position.set(0, avatar.height, -distance);
-      this.previewCamera.lookAt(new THREE.Vector3(0, h, 0));
-      this.previewCamera.updateMatrixWorld();
+      this.previewCamera.lookAt(0, 0, 0);
+      // this.previewCamera.updateMatrixWorld();
     }
+
+    // this.previewCamera.position.copy(this.avatar.position);
+    // this.previewRenderer.render(this.previewScene, this.previewCamera);
 
     // _copyAvatar(this.avatar, fakeAvatar);
     // fakeAvatar.Root.updateMatrixWorld();
   }
 
   update(timeDiff) {
-    if (this.avatar) {
-      this.avatar.update(timeDiff);
-    }
+    // if (this.avatar) {
+    //   this.avatar.avatar.update(timeDiff);
+    // }
+    this.oldParent = this.avatar.parent;
+    this.previewScene.add(this.avatar);
 
     this.previewRenderer.clear();
     this.previewRenderer.render(this.previewScene, this.previewCamera);
+    this.previewScene.remove(this.avatar);
+    this.oldParent.add(this.avatar);
   }
 
   onResults(results) {
@@ -332,7 +348,7 @@ export default class FaceTracker extends EventTarget {
             getBrowRaise(facelm, 'right'),
           ];
           // window.brows = brows;
-          this.avatar.arPose = {
+          this.avatar.avatar.arPose = {
             head: new THREE.Vector3()
               .copy(head.degrees)
               .multiplyScalar(Math.PI / 180),
