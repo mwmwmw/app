@@ -23,6 +23,9 @@ import physx from './physx.js';
 import transformControls from './transform-controls.js';
 import metaversefile from 'metaversefile';
 
+import metaversefileApi from './metaversefile-api.js';
+import FaceTracker from './face-tracking/face-tracking';
+
 const localVector = new THREE.Vector3();
 // const localVector2 = new THREE.Vector3();
 const localVector3 = new THREE.Vector3();
@@ -906,10 +909,6 @@ ioManager.bindInput = () => {
   }); */
 };
 
-export default ioManager;
-import metaversefileApi from './metaversefile-api.js';
-import FaceTracker from './face-tracking/face-tracking';
-
 let faceTracker = null;
 
 ioManager.getFaceTracker = () => faceTracker;
@@ -940,3 +939,5 @@ localPlayer.addEventListener('avatarupdate', e => {
   }
 });
 
+
+export default ioManager;
