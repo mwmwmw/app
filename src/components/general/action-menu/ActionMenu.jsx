@@ -12,7 +12,7 @@ export const ActionMenu = () => {
 
     const { state, setState, app } = useContext( AppContext );
     const [ xrSupported, setXrSupported ] = useState( false );
-
+    const [ cameraSupported, setCameraSupported ] = useState(false);
     //
 
     const stopPropagation = ( event ) => {
@@ -54,6 +54,10 @@ export const ActionMenu = () => {
 
     //
 
+    const handlePipBtnClick = () => {
+      app.setFaceTracking(!app.isFaceTrackingEnabled());
+    };
+
     useEffect( async () => {
 
         const isXrSupported = await app.isXrSupported();
@@ -87,7 +91,10 @@ export const ActionMenu = () => {
                 <img src="images/webpencil.svg" className={ classnames( styles.background, styles.blue ) } />
                 <span className={ styles.text } >{ xrSupported ? '仮想現実 VR ' : '仮想現実 VR (no)' }</span>
             </div>
-
+            <div className={ classnames(styles.btn) } onClick={ handlePipBtnClick } >
+                <img src="images/webpencil.svg" className={ classnames(styles.background, styles.blue) } />
+                <span className={ styles.text } >{ cameraSupported ? '顔追跡 Face Tracking' : '顔追跡 Face Tracking (no)' }</span>
+           </div>
         </div>
     );
 
