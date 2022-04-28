@@ -20,6 +20,7 @@ import { AppContext } from './components/app';
 import { User } from './User';
 
 import styles from './Header.module.css';
+import AvatarPip from '../face-tracking/AvatarPip';
 
 //
 
@@ -298,8 +299,10 @@ export default function Header () {
                         setNfts={setNfts}
                         loginFrom={loginFrom}
                     />
+                    <AvatarPip />
                 </div>
             </div>
+            
         </div>
     );
 
