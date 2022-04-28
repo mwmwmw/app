@@ -7,7 +7,7 @@ import {world} from '../world.js';
 import metaversefile from '../metaversefile-api.js';
 import ioManager from '../io-manager.js';
 
-let arControl = false;
+let arControl = true;
 export default function AvatarPip({
   app,
 }) {
@@ -17,18 +17,26 @@ export default function AvatarPip({
   const [arCameraEnabled, setArCameraEnabled] = useState(false);
   const [arPoseEnabled, setArPoseEnabled] = useState(false);
 
-  world.appManager.addEventListener('frame', () => {
-    const faceTracker = ioManager.getFaceTracker();
-    if (faceTracker) {
-      const localPlayer = metaversefile.useLocalPlayer();
-      if (arControl) {
-        faceTracker.setAvatarPose(localPlayer);
-      } else {
-        faceTracker.setAvatarPose(localPlayer, null);
+  useEffect(() => {
+    function getFaceTracker() {
+      const faceTracker = ioManager.getFaceTracker();
+      if (faceTracker) {
+        const localPlayer = metaversefile.useLocalPlayer();
+        if (arControl) {
+          faceTracker.setAvatarPose(localPlayer);
+        } else {
+          faceTracker.setAvatarPose(localPlayer, null);
+        }
+        console.log('set ar pose', localPlayer.arPose);
       }
-      // console.log('set ar pose', localPlayer.arPose);
     }
+
+    world.appManager.addEventListener('frame', getFaceTracker);
+    return () => {
+      world.appManager.removeEventListener('frame', getFaceTracker);
+    };
   });
+
   const arUiContentRef = useRef();
 
   const _isSomeArOpen = () => arAvatarEnabled || arCameraEnabled || arPoseEnabled;
@@ -116,10 +124,18 @@ export default function AvatarPip({
               _toggleFaceTracking();
             }}>EXIT</div>
           </div> : null}
-          <div className={classnames(styles['content-placeholder'], faceTrackingEnabled && !faceTrackingOpen ? styles.visible : null)} >
-            <h1>Standby...</h1>
+          <div className={
+            classnames(
+              // styles['content-placeholder'],
+              // styles.visible,
+              /*, faceTrackingEnabled && !faceTrackingOpen ? styles.visible : null) */
+            )} >
+            {/* <h1>Standby...</h1> */}
           </div>
-          <div className={classnames(styles.content /*, faceTrackingEnabled && faceTrackingOpen ? styles.visible : null */)} ref={arUiContentRef} />
+          <div className={classnames(
+            // styles.content,
+            /*, faceTrackingEnabled && faceTrackingOpen ? styles.visible : null */
+          )} ref={arUiContentRef} />
         </div>
       </div>
     </div>
