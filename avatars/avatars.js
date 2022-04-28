@@ -467,6 +467,8 @@ class Avatar {
     this.vowels = Float32Array.from([1, 0, 0, 0, 0]);
     this.poseAnimation = null;
 
+    this.arPose = null;
+
     modelBones.Root.traverse(o => {
       o.savedPosition = o.position.clone();
       o.savedMatrixWorld = o.matrixWorld.clone();
@@ -1399,6 +1401,116 @@ class Avatar {
       }
     }
   }
+
+  _updateArPose = (timestamp, timeDiff) => {
+    if (this.arPose) {
+      // update model bones
+      window.arPose = this.arPose;
+      for (const k in this.arPose.pose) {
+        if (
+          k !== 'Root' &&
+          k !== 'Hips' &&
+          k !== 'Left_ankle' &&
+          k !== 'Left_knee' &&
+          k !== 'Left_leg' &&
+          k !== 'Left_toe' &&
+          k !== 'Right_ankle' &&
+          k !== 'Right_knee' &&
+          k !== 'Right_leg' &&
+          k !== 'Right_toe'
+        ) {
+          this.modelBoneOutputs[k].quaternion.multiply(this.arPose.pose[k].quaternion);
+        }
+      }
+
+      // update hands
+      for (let i = 0; i < 2; i++) {
+        const hand = this.arPose.hands[i];
+        if (hand) {
+          for (const k in hand) {
+            if (k !== 'Left_wrist' && k !== 'Right_wrist') {
+              const v = hand[k];
+              localEuler.set(v.x, v.y, -v.z, 'YXZ');
+              
+              let k2 = k;
+              /* if (/left/i.test(k)) {
+                k2 = k2.replace(/left/gi, 'Right');
+              } else if (/right/i.test(k)) {
+                k2 = k2.replace(/right/gi, 'Left');
+              } */
+              
+              const k3 = _lowercase(k2);
+              this.modelBoneOutputsByVrm[k3].quaternion
+                .setFromEuler(localEuler)
+                
+              /* if (/wrist/i.test(k)) {
+                this.modelBoneOutputsByVrm[k3].quaternion
+                  // .premultiply(x180Quaternion)
+                  // .premultiply(/left/i.test(k) ? leftRotation : rightRotation)
+                  // .multiply(/left/i.test(k) ? rightRotation : leftRotation)
+                  // .multiply(rightRotation)
+                  // .premultiply(y180Quaternion)
+                  // .multiply(y180Quaternion)
+                  // .multiply(this.modelBoneOutputsByVrm[k3].initialQuaternion);
+              } */
+            }
+          }
+        }
+      }
+
+      // update head
+      const q = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(
+          -this.arPose.head.x,
+          -this.arPose.head.y,
+          this.arPose.head.z,
+          'YXZ'
+        )
+      )/* .premultiply(
+        new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI)
+      ) */;
+      this.modelBoneOutputs.Head.quaternion.premultiply(q);
+      
+      const [lPupil, rPupil] = this.arPose.face.pupils;
+      const xFactor = 1;
+      const yFactor = 1;
+      const yOffset = -0.1;
+      this.modelBoneOutputs.Eye_L.quaternion.setFromEuler(
+        new THREE.Euler(
+         -Math.min(Math.max(lPupil[1] * yFactor + yOffset, -Math.PI/2), Math.PI/2),
+         Math.min(Math.max(lPupil[0] * xFactor, -Math.PI/2), Math.PI/2),
+         0,
+         'YXZ',
+        )
+      );
+      // console.log('got', lPupil[0], lPupil[1]);
+      this.modelBoneOutputs.Eye_R.quaternion.setFromEuler(
+        new THREE.Euler(
+         -Math.min(Math.max(rPupil[1] * yFactor + yOffset, -Math.PI/2), Math.PI/2),
+         Math.min(Math.max(rPupil[0] * xFactor, -Math.PI/2), Math.PI/2),
+         0,
+         'YXZ',
+        )
+      );
+      // console.log('got', lPupil[0], lPupil[1], lPupil[2], rPupil[0], rPupil[1], rPupil[2]);
+      // this.modelBoneOutputs.Eye_R.quaternion.copy(this.modelBoneOutputs.Eye_L.quaternion);
+    } else {
+      this.modelBoneOutputs.Eye_L.quaternion.identity();
+      this.modelBoneOutputs.Eye_R.quaternion.identity();
+    }
+
+    Avatar.applyModelBoneOutputs(
+      this.foundModelBones,
+      this.modelBoneOutputs,
+      // this.getTopEnabled(),
+      this.getBottomEnabled(),
+      this.getHandEnabled(0),
+      this.getHandEnabled(1),
+    );
+    this.modelBones.Hips.updateMatrixWorld();
+
+  }
+
   update(timestamp, timeDiff) {
     const now = timestamp;
     const timeDiffS = timeDiff / 1000;
@@ -1884,6 +1996,7 @@ class Avatar {
       }
       this.debugMesh.visible = debug.enabled;
     }
+    this._updateArPose(timestamp, timeDiff);
   }
 
   isAudioEnabled() {
