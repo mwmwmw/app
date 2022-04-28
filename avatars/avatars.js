@@ -1439,9 +1439,9 @@ class Avatar {
                 k2 = k2.replace(/right/gi, 'Left');
               } */
               
-              const k3 = _lowercase(k2);
-              this.modelBoneOutputsByVrm[k3].quaternion
-                .setFromEuler(localEuler)
+              // const k3 = _lowercase(k2);
+              // this.modelBoneOutputsByVrm[k3].quaternion
+              //   .setFromEuler(localEuler)
                 
               /* if (/wrist/i.test(k)) {
                 this.modelBoneOutputsByVrm[k3].quaternion
@@ -1844,6 +1844,51 @@ class Avatar {
               if (index !== -1) {
                 morphTargetInfluences[index] = facepose.value ?? 1;
               }
+            }
+          } else if (this.arPose) { // ar speech
+            const {eyes, brows, mouth, vowels} = this.arPose.face;
+            if (blinkLeftIndex !== -1) {
+              // console.log('got left blink', blinkLeftIndex, eyes[0]);
+              morphTargetInfluences[blinkLeftIndex] = eyes[0];
+            }
+            if (blinkRightIndex !== -1) {
+              morphTargetInfluences[blinkRightIndex] = eyes[1];
+            }
+
+            const brow = (brows[0] + brows[1]) * 0.5;
+            // const vrmExtension = this.object?.parser?.json?.extensions?.VRM;
+            // window.vrmExtension = vrmExtension;
+            // window.skinnedMeshes = this.skinnedMeshes;
+            // window.skinnedMeshesVisemeMappings = this.skinnedMeshesVisemeMappings;
+            // console.log('got ', brow);
+            if (angryIndex !== -1) {
+              morphTargetInfluences[angryIndex] = Math.min(Math.max(brow, 0), 1);
+            }
+            if (surpriseIndex !== -1) {
+              morphTargetInfluences[surpriseIndex] = Math.min(Math.max(-brow, 0), 1);
+            }
+            if (funIndex !== -1) {
+              morphTargetInfluences[funIndex] = Math.min(Math.max(mouth, 0), 1);
+            }
+            if (sorrowIndex !== -1) {
+              morphTargetInfluences[sorrowIndex] = Math.min(Math.max(-mouth, 0), 1);
+            }
+            
+            const [a, e, i, o, u] = vowels;
+            if (aIndex !== -1) {
+              morphTargetInfluences[aIndex] = a;
+            }
+            if (eIndex !== -1) {
+              morphTargetInfluences[eIndex] = e;
+            }
+            if (iIndex !== -1) {
+              morphTargetInfluences[iIndex] = i;
+            }
+            if (oIndex !== -1) {
+              morphTargetInfluences[oIndex] = o;
+            }
+            if (uIndex !== -1) {
+              morphTargetInfluences[uIndex] = u;
             }
           }
 
