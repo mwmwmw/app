@@ -6,6 +6,7 @@ import {
   makeAvatar,
   switchAvatar,
 } from '../player-avatar-binding.js';
+
 import {domDimensions, internalDimensions, trackingPoints as points} from './constants.js';
 import {
   clamp,
@@ -22,6 +23,9 @@ import FaceTrackingWorker from './worker.js';
 // import Stats from 'stats.js';
 
 const fakeAvatar = _makeFakeAvatar();
+
+
+const tempPositionVector = new THREE.Vector3();
 
 export default class FaceTracker extends EventTarget {
   constructor() {
@@ -95,29 +99,10 @@ export default class FaceTracker extends EventTarget {
       // document.body.appendChild(overlayCanvas);
     } */
 
-    this.previewScene = new THREE.Scene();
-    this.previewScene.name = 'Pip';
-    this.previewScene.autoUpdate = false;
+    this.createCamera();
+    this.createScene();
 
-    const ambientLight = new THREE.AmbientLight(0xFFFFFF, 1);
-    this.previewScene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 1);
-    directionalLight.position.set(1, 2, 3);
-    this.previewScene.add(directionalLight);
 
-    // const geo = new THREE.BoxBufferGeometry(1, 1, 1);
-    // const mat = new THREE.MeshBasicMaterial();
-
-    // const mesh = new THREE.Mesh(geo, mat);
-
-    // this.previewScene.add(mesh);
-
-    this.previewCamera = new THREE.PerspectiveCamera(
-      60,
-      this.domElement.width / this.domElement.height,
-      0.1,
-      1000,
-    );
 
     const _recurseFrame = async () => {
       const imageBitmap = await this.videoCapture.pullFrame();
@@ -129,6 +114,36 @@ export default class FaceTracker extends EventTarget {
       _recurseFrame();
     };
     _recurseFrame();
+  }
+
+  createCamera() {
+    this.previewCamera = new THREE.PerspectiveCamera(
+      60,
+      this.domElement.width / this.domElement.height,
+      0.1,
+      1000,
+    );
+
+    this.previewCamera.name = 'PIP Camera';
+  }
+
+  createScene() {
+    this.previewScene = new THREE.Scene();
+    this.previewScene.name = 'Pip';
+    this.previewScene.autoUpdate = true;
+
+    const ambientLight = new THREE.AmbientLight(0xFFFFFF, 1);
+    this.previewScene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 1);
+    directionalLight.position.set(1, 2, 3);
+    this.previewScene.add(directionalLight);
+
+    const geo = new THREE.BoxBufferGeometry(1, 1, 1);
+    const mat = new THREE.MeshBasicMaterial();
+
+    const mesh = new THREE.Mesh(geo, mat);
+
+    this.previewScene.add(mesh);
   }
 
   async setAvatar(avatarApp) {
@@ -163,19 +178,25 @@ export default class FaceTracker extends EventTarget {
 
     //
 
-    console.log(this.avatar.parent.name);
-    this.avatar.add(this.previewCamera);
+    const distance = 1;
+    // const h = avatar.height * 0.85;
+    const h = this.avatar.avatar.height * 0.9;
+    this.previewCamera.position.copy(this.avatar.position);
+    this.previewCamera.position.y += h;
+    this.previewCamera.position.z += distance;
+    this.previewCamera.lookAt(this.avatar.position);
+    this.previewCamera.updateProjectionMatrix();
+
+
+    this.previewScene.add(this.previewCamera);
+
+    console.log(this.avatar);
 
     {
-      const distance = 1;
-      // const h = avatar.height * 0.85;
-      const h = this.avatar.avatar.height * 0.9;
-      this.previewCamera.position.copy(this.avatar.position);
-      this.previewCamera.position.y += h;
-      this.previewCamera.position.z += distance;
+
       // this.previewCamera.setRotationFromQuaternion(this.avatar.rotation);
       // this.previewCamera.position.set(0, avatar.height, -distance);
-      this.previewCamera.lookAt(0, 0, 0);
+      
       // this.previewCamera.updateMatrixWorld();
     }
 
@@ -190,12 +211,17 @@ export default class FaceTracker extends EventTarget {
     // if (this.avatar) {
     //   this.avatar.avatar.update(timeDiff);
     // }
+
+
     this.oldParent = this.avatar.parent;
+    tempPositionVector.copy(this.avatar.position);
     this.previewScene.add(this.avatar);
+    this.avatar.position.set(0, 0, 0);
 
     this.previewRenderer.clear();
     this.previewRenderer.render(this.previewScene, this.previewCamera);
     this.previewScene.remove(this.avatar);
+    this.avatar.position.copy(tempPositionVector);
     this.oldParent.add(this.avatar);
   }
 
@@ -369,13 +395,13 @@ export default class FaceTracker extends EventTarget {
             },
           };
         } else {
-          this.avatar.arPose = null;
+          this.avatar.avatar.arPose = null;
         }
       }
     }
   }
 
-  setAvatarPose(dstAvatar, srcAvatar = this.avatar) {
+  setAvatarPose(dstAvatar, srcAvatar = this.avatar.avatar) {
     dstAvatar.arPose = srcAvatar?.arPose;
   }
 
