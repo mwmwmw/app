@@ -4,6 +4,8 @@ import './allocate';
 import Avatar from '../avatars/avatars';
 import {trackingPoints as points} from './constants';
 
+const debug = false;
+
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 
 const localVector = new THREE.Vector3();
@@ -486,6 +488,7 @@ const _solvePoseToAvatar = (() => {
     boneBuffers.leftToe.copy(lm3d[31]);
     boneBuffers.rightToe.copy(lm3d[32]);
 
+    
     for (const k in boneBuffers) {
       // boneBuffers[k].x *= -1;
       boneBuffers[k].y *= -1;
@@ -591,6 +594,7 @@ const _solvePoseToAvatar = (() => {
     }
 
     const fakeQuaternion = (() => {
+      if (!debug) return new THREE.Quaternion();
       const now = performance.now();
       const i = Math.floor(now / 2000) % 4;
       const y = Math.sin(((now % 2000) / 2000) * (Math.PI * 2)) * Math.PI;
@@ -704,63 +708,50 @@ const _solvePoseToAvatar = (() => {
         // console.log('set hips', tempAvatar.Hips.quaternion.toArray().join(','));
       } */
     // const y = Math.sin(((performance.now() % 2000) / 2000) * (Math.PI*2)) * Math.PI;
+
     // console.log(y);
-    {
+
+    function setupLeftArm(tempAvatar) {
       tempAvatar.Left_arm.quaternion.identity();
 
       tempAvatar.Left_arm.quaternion
-        .premultiply(shiftLeftQuaternion);
+        .premultiply(window.shiftLeftQuaternion);
 
-      tempAvatar.Left_arm.quaternion
-        .premultiply(idleAvatar.Left_arm.getWorldQuaternion(new THREE.Quaternion()).invert());
+      // tempAvatar.Left_arm.quaternion
+      //   .premultiply(idleAvatar.Left_arm.getWorldQuaternion(new THREE.Quaternion()).invert());
       // .premultiply(idleAvatar.Left_arm.quaternion.clone().invert())
 
       tempAvatar.Left_arm.quaternion
         .premultiply(window.p0)
-      /* .premultiply(
-            new THREE.Quaternion().setFromRotationMatrix(
-              new THREE.Matrix4().lookAt(
-                new THREE.Vector3(0, 0, 0),
-                new THREE.Vector3(1, 0, 0),
-                new THREE.Vector3(0, 1, 0)
-              )
-            )
-          ) */
+        .premultiply(
+          new THREE.Quaternion().setFromRotationMatrix(
+            new THREE.Matrix4().lookAt(
+              new THREE.Vector3(0, 0, 0),
+              new THREE.Vector3(1, 0, 0),
+              new THREE.Vector3(0, 1, 0),
+            ),
+          ),
+        )
         .premultiply(window.px);
-      if (window.lol1) {
-        /* tempAvatar.Left_arm.quaternion
-            .premultiply(fakeQuaternion) */
-        tempAvatar.Left_arm.quaternion
-          .premultiply(fakeQuaternion)
-        /* .premultiply(
-              new THREE.Quaternion().setFromRotationMatrix(
-                new THREE.Matrix4().lookAt(
-                  boneBuffers.leftShoulder,
-                  boneBuffers.leftElbow,
-                  new THREE.Vector3(0, 1, 0)
-                    // .applyQuaternion(deltaQuaternion)
-                )
-              )
-            ) */
-          .premultiply(deltaQuaternion);
-      }
+
       tempAvatar.Left_arm.quaternion
         .premultiply(window.px.clone().invert());
       tempAvatar.Left_arm.quaternion
-        .premultiply(window.p1);
-      /* .setFromUnitVectors(
-            new THREE.Vector3(1, 0, 0),
-            boneBuffers.leftElbow.clone().sub(boneBuffers.leftShoulder).normalize()
-          ) */
+        .premultiply(window.p1)
+        .setFromUnitVectors(
+          new THREE.Vector3(-1, -1, 0),
+          boneBuffers.leftElbow.clone().sub(boneBuffers.leftShoulder).normalize(),
+        );
     }
-    {
+
+    function setupRightArm(tempAvatar) {
       tempAvatar.Right_arm.quaternion.identity();
 
       tempAvatar.Right_arm.quaternion
-        .premultiply(shiftRightQuaternion);
+        .premultiply(window.shiftRightQuaternion);
 
-      tempAvatar.Right_arm.quaternion
-        .premultiply(idleAvatar.Right_arm.getWorldQuaternion(new THREE.Quaternion()).invert());
+      // tempAvatar.Right_arm.quaternion
+      //   .premultiply(idleAvatar.Right_arm.getWorldQuaternion(new THREE.Quaternion()).invert());
       // .premultiply(idleAvatar.Left_arm.quaternion.clone().invert())
 
       tempAvatar.Right_arm.quaternion
@@ -775,33 +766,18 @@ const _solvePoseToAvatar = (() => {
             )
           ) */
         .premultiply(window.qx);
-      if (window.lol1) {
-        /* tempAvatar.Right_arm.quaternion
-            .premultiply(fakeQuaternion) */
-        tempAvatar.Right_arm.quaternion
-          .premultiply(fakeQuaternion)
-        /* .premultiply(
-              new THREE.Quaternion().setFromRotationMatrix(
-                new THREE.Matrix4().lookAt(
-                  boneBuffers.rightShoulder,
-                  boneBuffers.rightElbow,
-                  new THREE.Vector3(0, 1, 0)
-                    // .applyQuaternion(deltaQuaternion)
-                )
-              )
-            ) */
-          .premultiply(deltaQuaternion4);
-      }
+
       tempAvatar.Right_arm.quaternion
         .premultiply(window.qx.clone().invert());
       tempAvatar.Right_arm.quaternion
-        .premultiply(window.q1);
-      /* .setFromUnitVectors(
-            new THREE.Vector3(1, 0, 0),
-            boneBuffers.leftElbow.clone().sub(boneBuffers.leftShoulder).normalize()
-          ) */
+        .premultiply(window.q1)
+        .setFromUnitVectors(
+          new THREE.Vector3(1, 0, 0),
+          boneBuffers.rightElbow.clone().sub(boneBuffers.rightShoulder).normalize(),
+        );
     }
-    {
+
+    function setupLeftElbow(tempAvatar, idleAvatar) {
       tempAvatar.Left_elbow.quaternion.identity()
       // .premultiply(tempAvatar.Left_arm.quaternion.clone().invert())
         .premultiply(window.a0)
@@ -815,31 +791,17 @@ const _solvePoseToAvatar = (() => {
         .premultiply(window.ax);
       // .premultiply(window.d2)
 
-      tempAvatar.Left_arm.quaternion
-        .premultiply(idleAvatar.Left_elbow.quaternion.clone().invert());
+      // tempAvatar.Left_arm.quaternion
+      //   .premultiply(idleAvatar.Left_elbow.quaternion.clone().invert());
       // .premultiply(idleAvatar.Left_arm.quaternion.clone().invert())
-      if (window.lol2) {
-        tempAvatar.Left_elbow.quaternion
-          .premultiply(fakeQuaternion)
-        /* .premultiply(
-              new THREE.Quaternion().setFromRotationMatrix(
-                new THREE.Matrix4().lookAt(
-                  boneBuffers.leftElbow,
-                  boneBuffers.leftHand,
-                  new THREE.Vector3(0, 1, 0)
-                  // leftWristNormal
-                    // .applyQuaternion(deltaQuaternion2)
-                )
-              )
-            ) */
-          .premultiply(deltaQuaternion2);
-      }
+
       tempAvatar.Left_elbow.quaternion
         .premultiply(window.ax.clone().invert());
       tempAvatar.Left_elbow.quaternion
         .premultiply(window.a1);
     }
-    {
+
+    function setupRightElbow(tempAvatar) {
       tempAvatar.Right_elbow.quaternion.identity()
       // .premultiply(window.q2)
       /* .setFromRotationMatrix(
@@ -851,32 +813,30 @@ const _solvePoseToAvatar = (() => {
           ) */
         .premultiply(window.c0)
         .premultiply(window.cx);
-      if (window.lol2) {
-        tempAvatar.Right_elbow.quaternion
-          .premultiply(fakeQuaternion);
-      }
+
       tempAvatar.Right_elbow.quaternion
         .premultiply(window.cx.clone().invert());
       tempAvatar.Right_elbow.quaternion
         .premultiply(window.c1);
     }
-    {
+
+    function setupLeftWrist(tempAvatar) {
       tempAvatar.Left_wrist.quaternion.identity()
         .premultiply(window.b0)
         .premultiply(window.bx);
       if (window.lol3) {
         tempAvatar.Left_wrist.quaternion
-          .premultiply(fakeQuaternion)
-        /* .premultiply(
-              new THREE.Quaternion().setFromRotationMatrix(
-                new THREE.Matrix4().lookAt(
-                  leftPointerStart,
-                  leftPointerEnd,
-                  leftWristNormal
-                )
-              )
-            ) */
-          .premultiply(deltaQuaternion3);
+          // .premultiply(fakeQuaternion)
+          .premultiply(
+            new THREE.Quaternion().setFromRotationMatrix(
+              new THREE.Matrix4().lookAt(
+                leftPointerStart,
+                leftPointerEnd,
+                leftWristNormal,
+              ),
+            ),
+          )
+          .premultiply(window.deltaQuaternion3);
         // .premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI))
       }
       // .premultiply(fakeQuaternion)
@@ -894,14 +854,12 @@ const _solvePoseToAvatar = (() => {
       tempAvatar.Left_wrist.quaternion
         .premultiply(window.b1);
     }
-    {
+
+    function setupRightWrist(tempAvatar) {
       tempAvatar.Right_wrist.quaternion.identity()
         .premultiply(window.d0)
         .premultiply(window.dx);
-      if (window.lol3) {
-        tempAvatar.Right_wrist.quaternion
-          .premultiply(fakeQuaternion);
-      }
+
       // .premultiply(fakeQuaternion)
       /* .premultiply(
             new THREE.Quaternion().setFromRotationMatrix(
@@ -917,6 +875,7 @@ const _solvePoseToAvatar = (() => {
       tempAvatar.Right_wrist.quaternion
         .premultiply(window.d1);
     }
+
     /* {
         tempAvatar.Left_leg.quaternion.setFromRotationMatrix(
           localMatrix.lookAt(
@@ -946,11 +905,19 @@ const _solvePoseToAvatar = (() => {
       } */
     // window.leftLeg = tempAvatar.Left_leg;
 
+    setupLeftArm(tempAvatar);
+    setupLeftElbow(tempAvatar);
+    setupLeftWrist(tempAvatar);
+
+    setupRightArm(tempAvatar);
+    setupRightElbow(tempAvatar);
+    setupRightWrist(tempAvatar);
+
     const modelBoneWhiteliest = [
       tempAvatar.Hips,
       tempAvatar.UpperChest,
-      // tempAvatar.Left_shoulder,
-      // tempAvatar.Right_shoulder,
+      tempAvatar.Left_shoulder,
+      tempAvatar.Right_shoulder,
       tempAvatar.Left_arm,
       tempAvatar.Right_arm,
       tempAvatar.Left_elbow,
