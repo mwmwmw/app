@@ -75,12 +75,6 @@ export default class FaceTracker extends EventTarget {
     this.domElement = canvas;
 
 
-    this.localPlayer = metaversefileApi.useLocalPlayer();
-
-    this.localPlayer.addEventListener('avatarchange', e => {
-      this.localPlayer =  e.avatar.model;
-    });
-
     this.previewRenderer = new THREE.WebGLRenderer({
       canvas: this.domElement,
       // context,
@@ -149,6 +143,13 @@ export default class FaceTracker extends EventTarget {
     const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 1);
     directionalLight.position.set(1, 2, 3);
     this.previewScene.add(directionalLight);
+
+    const geo = new THREE.BoxBufferGeometry(0.1, 0.1, 0.1);
+    const mat = new THREE.MeshBasicMaterial();
+
+    const mesh = new THREE.Mesh(geo, mat);
+
+    this.previewScene.add(mesh);
   }
 
   async setAvatar(avatarApp) {
@@ -203,9 +204,9 @@ export default class FaceTracker extends EventTarget {
     //   this.avatar.avatar.update(timeDiff);
     // } 
     
-    
+    const localPlayer = metaversefileApi.useLocalPlayer();
     // set up side camera
-    this.localPlayer.matrixWorld.decompose(localVector, localQuaternion, localVector2);
+    localPlayer.matrixWorld.decompose(localVector, localQuaternion, localVector2);
     const targetPosition = localVector;
     const targetQuaternion = localQuaternion;
 
