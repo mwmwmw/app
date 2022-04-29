@@ -17,26 +17,6 @@ export default function AvatarPip({
   const [arCameraEnabled, setArCameraEnabled] = useState(false);
   const [arPoseEnabled, setArPoseEnabled] = useState(false);
 
-  useEffect(() => {
-    function getFaceTracker() {
-      const faceTracker = ioManager.getFaceTracker();
-      if (faceTracker) {
-        const localPlayer = metaversefile.useLocalPlayer();
-        if (arControl) {
-          faceTracker.setAvatarPose(localPlayer);
-        } else {
-          faceTracker.setAvatarPose(localPlayer, null);
-        }
-        console.log('set ar pose', localPlayer.arPose);
-      }
-    }
-
-    world.appManager.addEventListener('frame', getFaceTracker);
-    return () => {
-      world.appManager.removeEventListener('frame', getFaceTracker);
-    };
-  });
-
   const arUiContentRef = useRef();
 
   const _isSomeArOpen = () => arAvatarEnabled || arCameraEnabled || arPoseEnabled;
