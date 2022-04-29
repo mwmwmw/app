@@ -19,13 +19,20 @@ import {
 } from './utils.js';
 import VideoCapture from './video-capture.js';
 import FaceTrackingWorker from './worker.js';
+import {Vector3} from 'three';
+
+import metaversefileApi from '../metaversefile-api.js';
 
 // import Stats from 'stats.js';
 
 const fakeAvatar = _makeFakeAvatar();
 
-
-const tempPositionVector = new THREE.Vector3();
+const localMatrix = new THREE.Matrix4();
+const localVector = new THREE.Vector3();
+const localVector2 = new THREE.Vector3();
+const localVector3 = new THREE.Vector3();
+const localQuaternion = new THREE.Quaternion();
+const cameraOffset = new THREE.Vector3(0, 0, -1);
 
 export default class FaceTracker extends EventTarget {
   constructor() {
@@ -67,6 +74,13 @@ export default class FaceTracker extends EventTarget {
     canvas.style.height = domDimensions.height + 'px';
     this.domElement = canvas;
 
+
+    this.localPlayer = metaversefileApi.useLocalPlayer();
+
+    this.localPlayer.addEventListener('avatarchange', e => {
+      this.localPlayer =  e.avatar.model;
+    });
+
     this.previewRenderer = new THREE.WebGLRenderer({
       canvas: this.domElement,
       // context,
@@ -102,8 +116,6 @@ export default class FaceTracker extends EventTarget {
     this.createCamera();
     this.createScene();
 
-
-
     const _recurseFrame = async () => {
       const imageBitmap = await this.videoCapture.pullFrame();
       if (!this.live) return;
@@ -137,13 +149,6 @@ export default class FaceTracker extends EventTarget {
     const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 1);
     directionalLight.position.set(1, 2, 3);
     this.previewScene.add(directionalLight);
-
-    const geo = new THREE.BoxBufferGeometry(1, 1, 1);
-    const mat = new THREE.MeshBasicMaterial();
-
-    const mesh = new THREE.Mesh(geo, mat);
-
-    this.previewScene.add(mesh);
   }
 
   async setAvatar(avatarApp) {
@@ -178,27 +183,13 @@ export default class FaceTracker extends EventTarget {
 
     //
 
-    const distance = 1;
-    // const h = avatar.height * 0.85;
-    const h = this.avatar.avatar.height * 0.9;
-    this.previewCamera.position.copy(this.avatar.position);
-    this.previewCamera.position.y += h;
-    this.previewCamera.position.z += distance;
-    this.previewCamera.lookAt(this.avatar.position);
     this.previewCamera.updateProjectionMatrix();
-
 
     this.previewScene.add(this.previewCamera);
 
     console.log(this.avatar);
 
-    {
-
-      // this.previewCamera.setRotationFromQuaternion(this.avatar.rotation);
-      // this.previewCamera.position.set(0, avatar.height, -distance);
-      
-      // this.previewCamera.updateMatrixWorld();
-    }
+    
 
     // this.previewCamera.position.copy(this.avatar.position);
     // this.previewRenderer.render(this.previewScene, this.previewCamera);
@@ -210,18 +201,40 @@ export default class FaceTracker extends EventTarget {
   update(timeDiff) {
     // if (this.avatar) {
     //   this.avatar.avatar.update(timeDiff);
-    // }
+    // } 
+    
+    
+    // set up side camera
+    this.localPlayer.matrixWorld.decompose(localVector, localQuaternion, localVector2);
+    const targetPosition = localVector;
+    const targetQuaternion = localQuaternion;
 
+    this.previewCamera.position.copy(targetPosition)
+      .add(
+        localVector2.set(cameraOffset.x, 0, cameraOffset.z)
+          .applyQuaternion(targetQuaternion),
+      );
+    this.previewCamera.quaternion.setFromRotationMatrix(
+      localMatrix.lookAt(
+        this.previewCamera.position,
+        targetPosition,
+        localVector3.set(0, 1, 0),
+      ),
+    );
+    this.previewCamera.position.add(
+      localVector2.set(0, cameraOffset.y, 0)
+        .applyQuaternion(targetQuaternion),
+    );
+    this.previewCamera.updateMatrixWorld();
 
     this.oldParent = this.avatar.parent;
-    tempPositionVector.copy(this.avatar.position);
+    // tempPositionVector.copy(this.avatar.position);
     this.previewScene.add(this.avatar);
-    this.avatar.position.set(0, 0, 0);
-
+    // this.avatar.position.set(0, 0, 0);
     this.previewRenderer.clear();
     this.previewRenderer.render(this.previewScene, this.previewCamera);
     this.previewScene.remove(this.avatar);
-    this.avatar.position.copy(tempPositionVector);
+    // this.avatar.position.copy(tempPositionVector);
     this.oldParent.add(this.avatar);
   }
 
