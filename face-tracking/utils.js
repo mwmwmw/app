@@ -943,3 +943,66 @@ const _copyAvatar = (srcAvatar, dstModelBones) => {
 };
 
 export {clamp, eyeLidRatio, getEyeOpen, getBrowRaise, _makeFakeAvatar, _copyAvatar, _copyAvatarBonePositions, _setAvatarToIdlePose, _solvePoseToAvatar};
+import {Quaternion, Vector3} from 'three';
+import metaversefile from 'metaversefile';
+const debug_shoulders = false;
+const debug_elbows = false;
+const debug_hands = false;
+
+const local_shiftLeftQuaternion = new Quaternion()
+  .premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI * 0.5));
+const local_shiftRightQuaternion = new Quaternion()
+  .premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI * 0.5));
+
+const local_deltaQuaternion = new Quaternion();
+const local_deltaQuaternion2 = new Quaternion();
+const local_deltaQuaternion3 = new Quaternion();
+const local_deltaQuaternion4 = new Quaternion();
+
+// left
+// arm
+const local_px = new Quaternion();
+const local_p0 = new Quaternion();
+const local_p1 = new Quaternion();
+
+// elbow
+const local_ax = new Quaternion();
+const local_a0 = new Quaternion();
+const local_a1 = new Quaternion();
+
+// hand
+const local_bx = new Quaternion();
+const local_b0 = new Quaternion();
+const local_b1 = new Quaternion();
+
+// right
+// arm
+const local_qx = new Quaternion();
+const local_q0 = new Quaternion();
+const local_q1 = new Quaternion();
+
+// elbow
+const local_cx = new Quaternion();
+const local_c0 = new Quaternion();
+const local_c1 = new Quaternion();
+
+// hand
+const local_dx = new Quaternion();
+const local_d0 = new Quaternion();
+const local_d1 = new Quaternion();
+const localVector = new THREE.Vector3();
+const localVector2 = new THREE.Vector3();
+const localVector3 = new THREE.Vector3();
+const localVector4 = new THREE.Vector3();
+const localVector5 = new THREE.Vector3();
+const localVector6 = new THREE.Vector3();
+const localVector7 = new THREE.Vector3();
+const localVector8 = new THREE.Vector3();
+const localVector9 = new THREE.Vector3();
+const localTriangle = new THREE.Triangle();
+const localMatrix = new THREE.Matrix4();
+const zeroVector = new THREE.Vector3();
+
+const localQuaternion = new THREE.Quaternion();
+const localQuaternion2 = new THREE.Quaternion();
+const localMatrix2 = new THREE.Matrix4();
