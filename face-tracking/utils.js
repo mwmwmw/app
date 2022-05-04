@@ -964,6 +964,7 @@ const _solvePoseToAvatar = (() => {
         boneBuffers.leftShoulder,
         boneBuffers.leftElbow,
         new THREE.Vector3(0, 1, 0),
+        new THREE.Vector3(0, 0, -1),
       ),
     );
 
@@ -975,6 +976,7 @@ const _solvePoseToAvatar = (() => {
         new THREE.Vector3(0, -1, 0),
       ),
     );
+    )//.invert();
 
     tempAvatar.Right_arm.position.copy(boneBuffers.rightShoulder);
     tempAvatar.Right_arm.quaternion.setFromRotationMatrix(
@@ -982,6 +984,7 @@ const _solvePoseToAvatar = (() => {
         boneBuffers.rightShoulder,
         boneBuffers.rightElbow,
         new THREE.Vector3(0, 1, 0),
+        new THREE.Vector3(0, 0, -1),
       ),
     );
 
@@ -993,7 +996,10 @@ const _solvePoseToAvatar = (() => {
         new THREE.Vector3(0, -1, 0),
       ),
     );
+    )//.invert();
 
+    tempAvatar.Right_wrist.position.copy(boneBuffers.rightHand);
+    tempAvatar.Left_wrist.position.copy(boneBuffers.leftHand);
     
 
 
