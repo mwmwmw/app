@@ -957,45 +957,44 @@ const _solvePoseToAvatar = (() => {
     //     .premultiply(local_d1);
     // }
 
-    {
-      tempAvatar.Left_elbow.quaternion.setFromRotationMatrix(
-        localMatrix.lookAt(
-          boneBuffers.leftElbow,
-          boneBuffers.leftHand,
-          new THREE.Vector3(0, 0, 1),
-        ),
-      );
-    }
+    tempAvatar.Left_arm.position.copy(boneBuffers.leftShoulder);
+    tempAvatar.Left_arm.quaternion.setFromRotationMatrix(
+      localMatrix.lookAt(
+        boneBuffers.leftShoulder,
+        boneBuffers.leftElbow,
+        new THREE.Vector3(0, 1, 0),
+      ),
+    );
 
-    {
-      tempAvatar.Right_elbow.quaternion.setFromRotationMatrix(
-        localMatrix.lookAt(
-          boneBuffers.rightElbow,
-          boneBuffers.rightHand,
-          new THREE.Vector3(0, 0, 1),
-        ),
-      );
-    }
+    tempAvatar.Left_elbow.position.copy(boneBuffers.leftElbow);
+    tempAvatar.Left_elbow.quaternion.setFromRotationMatrix(
+      localMatrix.lookAt(
+        boneBuffers.leftElbow,
+        boneBuffers.leftHand,
+        new THREE.Vector3(0, -1, 0),
+      ),
+    );
 
-    {
-      tempAvatar.Left_arm.quaternion.setFromRotationMatrix(
-        localMatrix.lookAt(
-          boneBuffers.leftShoulder,
-          boneBuffers.leftElbow,
-          new THREE.Vector3(0, 0, 1),
-        ),
-      );
-    }
+    tempAvatar.Right_arm.position.copy(boneBuffers.rightShoulder);
+    tempAvatar.Right_arm.quaternion.setFromRotationMatrix(
+      localMatrix.lookAt(
+        boneBuffers.rightShoulder,
+        boneBuffers.rightElbow,
+        new THREE.Vector3(0, 1, 0),
+      ),
+    );
 
-    {
-      tempAvatar.Right_arm.quaternion.setFromRotationMatrix(
-        localMatrix.lookAt(
-          boneBuffers.rightShoulder,
-          boneBuffers.rightElbow,
-          new THREE.Vector3(0, 0, 1),
-        ),
-      );
-    }
+    tempAvatar.Right_elbow.position.copy(boneBuffers.rightElbow);
+    tempAvatar.Right_elbow.quaternion.setFromRotationMatrix(
+      localMatrix.lookAt(
+        boneBuffers.rightElbow,
+        boneBuffers.rightHand,
+        new THREE.Vector3(0, -1, 0),
+      ),
+    );
+
+    
+
 
     /* {
       tempAvatar.Left_leg.quaternion.setFromRotationMatrix(
